@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sovereign Regalia - Enemy Tracker</title>
+  <style>
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-card: #0f3460;
+      --border: #1f4068;
+      --accent: #e94560;
+      --accent-hover: #ff6b6b;
+      --text: #eaeaea;
+      --text-dim: #a0a0a0;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #ef4444;
+      --input-bg: #0a0a1a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .persistence-notice {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+
+    .persistence-notice.obr {
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+    }
+
+    .persistence-notice.local {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid var(--warning);
+      color: var(--warning);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.obr { background: var(--success); }
+    .status-dot.local { background: var(--warning); }
+
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 8px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      border-color: var(--accent);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .enemy-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .enemy-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .enemy-card.selected {
+      border-color: var(--accent);
+    }
+
+    .enemy-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--bg-card);
+    }
+
+    .enemy-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .enemy-type {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .hp-bar-container {
+      position: relative;
+      height: 20px;
+      background: var(--bg-primary);
+      margin: 8px;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .hp-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--danger), var(--warning));
+      transition: width 0.3s;
+    }
+
+    .hp-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 11px;
+      font-weight: 600;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 8px;
+      gap: 4px;
+    }
+
+    .stat-box {
+      text-align: center;
+      min-width: 40px;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .stat-value.base-dmg {
+      color: var(--accent);
+    }
+
+    .attacks-list {
+      padding: 6px 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .attack-item {
+      display: flex;
+      flex-direction: column;
+      padding: 4px 6px;
+      margin-bottom: 4px;
+      background: var(--bg-card);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .attack-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .attack-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .atk-name {
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    .atk-stats {
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    .attack-item-effect {
+      display: none;
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .attack-item.expanded .attack-item-effect {
+      display: block;
+    }
+
+    .atk-toggle {
+      font-size: 8px;
+      color: var(--text-dim);
+      transition: transform 0.2s;
+    }
+
+    .attack-item.expanded .atk-toggle {
+      transform: rotate(180deg);
+    }
+
+    .element-interactions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 6px 8px;
+    }
+
+    .interaction-tag {
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+
+    .interaction-tag.weakness { background: #662222; color: #ff8888; }
+    .interaction-tag.resistance { background: #224466; color: #88bbff; }
+    .interaction-tag.immunity { background: #444444; color: #cccccc; }
+    .interaction-tag.absorb { background: #226622; color: #88ff88; }
+
+    .ability-section {
+      border-top: 1px solid var(--border);
+    }
+
+    .ability-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .ability-header:hover {
+      background: rgba(233, 69, 96, 0.1);
+    }
+
+    .ability-toggle {
+      font-size: 10px;
+      color: var(--text-dim);
+      transition: transform 0.2s;
+    }
+
+    .ability-section.expanded .ability-toggle {
+      transform: rotate(180deg);
+    }
+
+    .ability-content {
+      display: none;
+      padding: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      background: var(--bg-card);
+      white-space: pre-wrap;
+    }
+
+    .ability-section.expanded .ability-content {
+      display: block;
+    }
+
+    .calc-section {
+      margin: 8px;
+      background: var(--bg-card);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .calc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .calc-header:hover {
+      background: rgba(233, 69, 96, 0.1);
+    }
+
+    .calc-toggle {
+      color: var(--text-dim);
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+
+    .calc-section.expanded .calc-toggle {
+      transform: rotate(180deg);
+    }
+
+    .calc-content {
+      display: none;
+      padding: 8px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    .calc-section.expanded .calc-content {
+      display: block;
+    }
+
+    .calc-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .calc-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      min-width: 50px;
+    }
+
+    .tier-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tier-btn {
+      padding: 4px 8px;
+      font-size: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-dim);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tier-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .tier-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .tier-btn.crit-btn.active {
+      background: #cc8800;
+      border-color: #cc8800;
+    }
+
+    .buff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .buff-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .buff-item label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .buff-item input {
+      width: 100%;
+      padding: 4px 6px;
+      font-size: 11px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .damage-result {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px;
+      background: var(--bg-card);
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    .damage-result-label {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .damage-result-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .damage-result-value.crit {
+      color: #ffaa00;
+    }
+
+    .damage-breakdown {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    .apply-damage-btn {
+      margin-left: 8px;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 4px;
+      padding: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .damage-input {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .damage-input input {
+      width: 40px;
+      text-align: center;
+      padding: 4px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+    }
+
+    .editor-panel {
+      display: none;
+      padding: 10px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+    }
+
+    .editor-panel.active {
+      display: block;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .form-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 6px 8px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .form-group textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 12px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .attacks-editor {
+      margin-bottom: 10px;
+    }
+
+    .attack-entry {
+      background: var(--bg-card);
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .attack-entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .no-enemies {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 40px 20px;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>⚔️ Enemy Tracker</h1>
+    <button class="btn btn-primary" id="addEnemy">+ Add Enemy</button>
+  </div>
+
+  <div class="persistence-notice local" id="persistenceNotice">
+    <span class="status-dot local" id="statusDot"></span>
+    <span id="persistenceText">Checking connection...</span>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-secondary btn-small" id="exportBtn">📤 Export</button>
+    <button class="btn btn-secondary btn-small" id="importBtn">📥 Import</button>
+    <button class="btn btn-danger btn-small" id="clearAllBtn">🗑️ Clear All</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="list">Enemy List</div>
+    <div class="tab" data-tab="editor">Edit</div>
+  </div>
+
+  <div id="listView">
+    <div class="enemy-list" id="enemyList">
+      <div class="no-enemies">No enemies added yet.<br>Click "+ Add Enemy" to create one.</div>
+    </div>
+  </div>
+
+  <div id="editorView" class="editor-panel">
+    <div class="form-row">
+      <div class="form-group" style="flex: 2">
+        <label>Name</label>
+        <input type="text" id="enemyName" placeholder="Enemy Name">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="enemyType">
+          <option value="Humanoid">Humanoid</option>
+          <option value="Beast">Beast</option>
+          <option value="Construct">Construct</option>
+          <option value="Monster">Monster</option>
+          <option value="Spirit">Spirit</option>
+          <option value="Undead">Undead</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-title">Combat Stats</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Max HP</label>
+        <input type="number" id="maxHp" value="10" min="1">
+      </div>
+      <div class="form-group">
+        <label>Current HP</label>
+        <input type="number" id="currentHp" value="10" min="0">
+      </div>
+      <div class="form-group">
+        <label>Size</label>
+        <input type="number" id="enemySize" value="1" min="1" max="4">
+      </div>
+      <div class="form-group">
+        <label>Init</label>
+        <input type="number" id="enemyInit" value="0" min="0">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>MOV</label>
+        <input type="number" id="enemyMov" value="4" min="0">
+      </div>
+      <div class="form-group">
+        <label>EVA</label>
+        <input type="number" id="enemyEva" value="9" min="0">
+      </div>
+      <div class="form-group">
+        <label>M.EVA</label>
+        <input type="number" id="enemyMeva" value="8" min="0">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Guard</label>
+        <input type="number" id="enemyGuard" value="1" min="0">
+      </div>
+      <div class="form-group">
+        <label>Barrier</label>
+        <input type="number" id="enemyBarrier" value="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Base Damage</label>
+        <input type="number" id="enemyBaseDamage" value="0" min="0" max="4">
+      </div>
+    </div>
+
+    <div class="section-title">Attacks</div>
+    <div class="attacks-editor" id="attacksEditor"></div>
+    <button class="btn btn-secondary btn-small" id="addAttackBtn">+ Add Attack</button>
+
+    <div class="section-title">Element Interactions</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Weaknesses</label>
+        <input type="text" id="enemyWeaknesses" placeholder="Flame, Light">
+      </div>
+      <div class="form-group">
+        <label>Resistances</label>
+        <input type="text" id="enemyResistances" placeholder="Steel">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Immunities</label>
+        <input type="text" id="enemyImmunities" placeholder="Venom">
+      </div>
+      <div class="form-group">
+        <label>Absorbs</label>
+        <input type="text" id="enemyAbsorbs" placeholder="Shadow">
+      </div>
+    </div>
+
+    <div class="section-title">Abilities</div>
+    <div class="form-group">
+      <label>Abilities (Format: ABILITY NAME: Description)</label>
+      <textarea id="enemyAbilityDesc" placeholder="PACK TACTICS: +2 to attack when ally within 1 space.
+
+FLEE: When leader defeated, flees battlefield."></textarea>
+    </div>
+
+    <div style="display: flex; gap: 8px; margin-top: 16px;">
+      <button class="btn btn-primary" id="saveEnemyBtn" style="flex:1">Save Enemy</button>
+      <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+      <button class="btn btn-danger" id="deleteEnemyBtn">Delete</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
